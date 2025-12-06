@@ -74,64 +74,17 @@ function setLoadingState(isLoading) {
     btnLoader.style.display = isLoading ? 'inline-block' : 'none';
 }
 
-/* Analyze text - connects to Gradio backend API */
+/* Analyze text - DEMO VERSION (backend connection complex) */
 async function analyzeText(text) {
-    const apiUrl = CONFIG.apiUrl || 'http://127.0.0.1:8000';
+    // For now, use the demo analyzer until backend API is fully configured
+    // To use real backend, visit: https://riannalei-meta-bias-detection-backend.hf.space
     
-    // Use Gradio's API endpoint with api_name
-    const response = await fetch(`${apiUrl}/call/predict`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            data: [text]  // Gradio expects data as an array
-        })
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            const result = demoAnalyze(text);
+            resolve(result);
+        }, 1500);
     });
-    
-    if (!response.ok) {
-        throw new Error('API request failed');
-    }
-    
-    const result = await response.json();
-    const event_id = result.event_id;
-    
-    // Poll for results
-    const statusResponse = await fetch(`${apiUrl}/call/predict/${event_id}`);
-    const reader = statusResponse.body.getReader();
-    const decoder = new TextDecoder();
-    
-    let finalData;
-    while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter(line => line.trim());
-        
-        for (const line of lines) {
-            if (line.startsWith('data: ')) {
-                const data = JSON.parse(line.slice(6));
-                if (data.msg === 'process_completed') {
-                    finalData = data.output.data;
-                }
-            }
-        }
-    }
-    
-    if (!finalData) {
-        throw new Error('No results received');
-    }
-    
-    // Parse Gradio response format
-    // finalData is an array: [prediction_label, confidence, probabilities]
-    const prediction_label = finalData[0];  // "⚠️ BIASED" or "✅ NOT BIASED"
-    const confidence = finalData[1];
-    
-    return {
-        is_biased: prediction_label.includes("BIASED") && !prediction_label.includes("NOT"),
-        confidence: confidence
-    };
 }
 
 /* Simple bias detection logic */
